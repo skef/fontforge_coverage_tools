@@ -342,15 +342,26 @@ F0000..FFFFF; Supplementary Private Use Area-A
 100000..10FFFF; Supplementary Private Use Area-B"""
 
 bl_re = re.compile('^([0-9A-F]{4,6})\.\.([0-9A-F]{4,6}); (.+)$')
-uniblock_dict = collections.OrderedDict( (x[3].lower(), (int(x[1], 16), int(x[2], 16))) for x in ( bl_re.match(y) for y in uniblock_str.splitlines() ) )
 
-unicat_map = { 'l': ['lu', 'll', 'lt', 'lm', 'lo'], 'm': ['mn', 'mc', 'me'], 'n': ['nd', 'nl', 'no'], 'p': ['pc', 'pd', 'ps', 'pe', 'pi', 'pf', 'po'], 's': ['sm', 'sc', 'sk', 'so'], 'z': ['zs', 'zl', 'zp'], 'c': ['cc', 'cf', 'cs', 'co', 'cn'] }
+uniblock_dict = collections.OrderedDict( (x[3].lower(), (int(x[1], 16), int(x[2], 16))) for x 
+                                         in ( bl_re.match(y) for y in uniblock_str.splitlines() ) )
+
+unicat_map = { 'l': ['lu', 'll', 'lt', 'lm', 'lo'],
+               'm': ['mn', 'mc', 'me'],
+               'n': ['nd', 'nl', 'no'], 
+               'p': ['pc', 'pd', 'ps', 'pe', 'pi', 'pf', 'po'], 
+               's': ['sm', 'sc', 'sk', 'so'], 
+               'z': ['zs', 'zl', 'zp'], 
+               'c': ['cc', 'cf', 'cs', 'co', 'cn'] 
+               }
 
 def showblocks():
+    """Print Unicode block names to stdout"""
     for b in uniblock_dict.keys():
         print(b)
 
 def unicat_dict(cs):
+    """Return a dictionary of Unicode Category->True corresponding to the string argument"""
     d = {}
     for k in field_delim.split(cs.lower()):
         umv = unicat_map.get(k)
@@ -364,7 +375,9 @@ def unicat_dict(cs):
 # Command line arguments
 
 def parseArgs():
-    parser = argparse.ArgumentParser(description='ff_sfd_pseudoenc: Organize unencoded glyphs in a FontForge SFD file')
+    parser = argparse.ArgumentParser(
+            description='ff_sfd_pseudoenc: Organize unencoded glyphs in a FontForge SFD file'
+            )
     parser.add_argument('-i', '--input', metavar='(input_file)')
     parser.add_argument('-o', '--output', metavar='(output_file)')
     parser.add_argument('-c', '--config', metavar='(config_file)')
@@ -374,7 +387,8 @@ def parseArgs():
     parser.add_argument('-s', '--silent', action='store_true', help='no messages')
     parser.add_argument('-m', '--memory', action='store_true', help="do not store entire .sfd in memory")
     parser.add_argument('--showblocks', action='store_true', help='print unicode block names and exit')
-    parser.add_argument('--showconfpath', action='store_true', help='Print (input_file)-relative config file search path ')
+    parser.add_argument('--showconfpath', action='store_true',
+                        help='Print (input_file)-relative config file search path ')
 
     return parser.parse_args()
 
@@ -383,7 +397,8 @@ args = parseArgs()
 if args.showblocks:
     showblocks()
     sys.exit(0)
-if args.input and args.output and os.path.exists(args.output) and os.path.samefile(args.input, args.output):
+if (args.input and args.output and os.path.exists(args.output)
+    and os.path.samefile(args.input, args.output)):
     sys.stderr.write("Input and output cannot point to same file, use --overwrite instead")
     sys.exit(1)
 if args.overwrite and not args.input:
@@ -412,8 +427,9 @@ two_dots = re.compile('\.\.')
 
 # Objects
 
-# Represents a set of integers as an ordered list of tuples (low..high)
 class IntRanges:
+    """Represents a set of integers as an ordered list of tuples (low..high)"""
+
     def __init__(self, i=None):
         if isinstance(i, IntRanges):
             self.rl = copy.copy(i.rl)
@@ -421,6 +437,8 @@ class IntRanges:
             self.rl = self.sortCollapse(self.convert(i))
 
     def convert(self, i):
+        """Returns a range list corresponding to the string, list, or IntRanges argument"""
+
         # another IntRange object
         if isinstance(i, IntRanges):
             return copy.copy(i.rl)
@@ -431,6 +449,8 @@ class IntRanges:
                     if len(g) > 1 else (int(g[0],0), int(g[0],0))
                     for g in ( two_dots.split(x) for x in field_delim.split(i) ) ]
         # List of integers (any order)
+        elif isinstance(i, list) and len(i) == 0:
+            return []
         elif isinstance(i, list) and isinstance(i[0], int):
             return [ (x, x) for x in i ]
         # List of range tuples (any order, with potential duplication)
@@ -444,9 +464,12 @@ class IntRanges:
     def sortCollapse(self, tups):
         return self.collapse(sorted(tups))
 
-    # stups should be a list of range tuples ordered by first and then second element
-    # returns compressed ranges free of duplication
     def collapse(self, stups):
+        """
+        Returns compressed ranges free of duplication
+        stups should be a list of range tuples ordered by first and then second element
+        """
+
         rl = []
         if len(stups) == 0:
             return rl
@@ -460,34 +483,42 @@ class IntRanges:
         rl.append(l)
         return rl
 
-    # Returns an ordered list of integers corresponding to the current ranges
     def ints(self):
+        """Returns an ordered list of integers corresponding to the current ranges"""
+
         r = []
         for t in self.rl:
             r.extend(list(range(t[0],t[1]+1)))
         return r
 
-    # Updates the ranges to be the union of the current ranges and that of
-    # the argument (which may be any of the constructor types)
     def add(self, orl):
+        """
+        Updates the ranges to be the union of the current ranges and that of
+        the argument (which may be any of the constructor types)
+        """
+
         # Could be optimized for when orl is another IntRange
         self.rl = self.sortCollapse(self.rl + self.convert(orl))
 
-    # Returns the number of integers represented by the current ranges
     def count(self):
+        """Returns the number of integers represented by the current ranges"""
+
         c = 0
         for tp in self.rl:
             c += tp[1]-tp[0]+1
         return c
 
-    # Returns a list of three-element tuples
-    # The last two elements of each tuple are ranges that represent the
-    # intersection of the current ranges and the ranges of the argument
-    # 
-    # The first element represents the offset of the start of that range
-    # with respect to the current list. (Or in other words the index of
-    # tup[1] in the list that would be returned by ints().)
     def offsetIntersect(self, orl):
+        """
+        Returns a list of three-element tuples
+        The last two elements of each tuple are ranges that represent the
+        intersection of the current ranges and the ranges of the argument
+
+        The first element represents the offset of the start of that range
+        with respect to the current list. (Or in other words the index of
+        tup[1] in the list that would be returned by ints().)
+        """
+
         if not isinstance(orl, IntRanges):
             raise Exception("Argument other than IntRanges object passed to IntRanges.objectIntersect")
         r = []
@@ -514,16 +545,18 @@ class IntRanges:
 
         return r
 
-# Represents (the relevant entries in) a fontforge .sfd file
-# 
-# Only interprets lines starting with "BeginChars", "StartChar:",
-# and "Encoding:" (in both headers and individual glyphs), as well 
-# as "FontName", "FullName" and "FamilyName".
-# 
-# On output only "BeginChars" and "Encoding:" (in the individual
-# glyphs) will be altered
-
 class SFDFile:
+    """
+    Represents (the relevant entries in) a fontforge .sfd file
+
+    Only interprets lines starting with "BeginChars", "StartChar:",
+    and "Encoding:" (in both headers and individual glyphs), as well 
+    as "FontName", "FullName" and "FamilyName".
+
+    On output only "BeginChars" and "Encoding:" (in the individual
+    glyphs) will be altered
+    """
+
     def __init__(self, args):
 
         self.args = args
@@ -551,39 +584,35 @@ class SFDFile:
         # True for any (as yet) unprocessed un-unicoded glyph
         self.unenc_dict = collections.OrderedDict() 
 
-        # Two-level record of extensions of un-unicoded glyphs
-        self.unext_dict = {}
-
-    # Return tuple of (basename, extensions) where the latter are ordered alphanumerically
     def getCanonPair(self, gname):
+        """Return tuple of (basename, extensions) where the latter are ordered alphanumerically"""
+
         el = re.split('\.', gname)
         if len(el) == 1:
             return (el[0], '')
         return (el[0], '.'.join(sorted(el[1:])))
 
-    # Intelligently concatenate a canonPair
     def getCanonName(self, cpair):
+        """Intelligently concatenate a canonPair"""
+
         if cpair[1] == '':
             return cpair[0]
         return cpair[0] + '.' + cpair[1]
 
-    def markExtension(self, gnum, ext):
-        if not self.unext_dict.get(ext):
-            self.unext_dict[ext] = []
-        self.unext_dict[ext].append(gnum)
+    def noteExtensions(self, extstr):
+        """Return an extension Truth dictionary of corresponding to extstr"""
 
-    def noteExtensions(self, gnum, extstr):
         d = {}
         if extstr == '':
-            self.markExtension(gnum, ' None')
             d[' None'] = True
         else:
             for ext in re.split('\.', extstr):
-                self.markExtension(gnum, ext)
                 d[ext] = True
         return d
 
     def openIn(self):
+        """Determine and open the input file"""
+
         try:
             if self.args.input:
                 self.ifd = open(self.args.input, 'r')
@@ -599,11 +628,16 @@ class SFDFile:
             sys.exit(1);
 
     def openOut(self):
+        """Determine and open the output file"""
+
+        if self.args.dryrun:
+            return
         try:
             if (self.args.output):
                 self.ofd = open(self.args.output, 'w')
             elif self.args.overwrite:
-                self.ofd = tempfile.NamedTemporaryFile(mode='w', dir=os.path.dirname(self.args.input), delete=False)
+                self.ofd = tempfile.NamedTemporaryFile(mode='w',
+                                                       dir=os.path.dirname(self.args.input), delete=False)
             else:
                 self.ofd = sys.stdout
         except IOError as e:
@@ -611,6 +645,8 @@ class SFDFile:
             sys.exit(1);
 
     def readIn(self):
+        """Read in the input file, noting relevant lines"""
+
         fn_re = re.compile('^F[oua][a-z]{2,4}Name: (.+)$')
         he_re = re.compile('^Encoding: (\S+)$')
         hbc_re = re.compile('^BeginChars: (\d+) (\d+)$')
@@ -666,8 +702,9 @@ class SFDFile:
                             self.uni_to_gnum[uni_enc] = gnum
                         else:
                             self.unenc_dict[gnum] = True
-                            ext_dict = self.noteExtensions(gnum, canon_pair[1])
-                        self.gnum_tuple[gnum] = (gname, uni_enc, cust_enc, canon_pair[0], canon_pair[1], ext_dict)
+                            ext_dict = self.noteExtensions(canon_pair[1])
+                        self.gnum_tuple[gnum] = (gname, uni_enc, cust_enc,
+                                                 canon_pair[0], canon_pair[1], ext_dict)
         except ValueError:
             sys.stderr.write("Expected integer on line " + lnum + "\n")
         except Exception as e:
@@ -675,6 +712,8 @@ class SFDFile:
         self.uni_list = IntRanges(list(self.uni_to_gnum.keys()))
 
     def writeOut(self, abs_cust_dict):
+        """Write the output file"""
+
         if self.tmp_input:
             self.tmp_input.seek(0)
             lines = self.tmp_input
@@ -684,19 +723,24 @@ class SFDFile:
             gn = self.ln_to_gnum.get(lnum)
         
             if lnum == self.header_encoding_ln:
-                self.ofd.write("BeginChars: " + str(self.max_custenc) + " " + str(self.glyph_count) + "\n")
+                if not self.args.dryrun:
+                    self.ofd.write("BeginChars: " + str(self.max_custenc) + " " + str(self.glyph_count) + "\n")
             elif gn and self.gnum_tuple[gn][1] <= 1:
                 cust_enc = abs_cust_dict[gn]
-                self.ofd.write("Encoding: " + str(cust_enc) + " -1 " + str(gn) + "\n")
-            else:
+                if not self.args.dryrun:
+                    self.ofd.write("Encoding: " + str(cust_enc) + " -1 " + str(gn) + "\n")
+            elif not self.args.dryrun:
                 self.ofd.write(line)
         if self.tmp_input:
             self.tmp_input.close() # SpooledTemporaryFile cleans itself up on close
-        self.ofd.close()
-        if self.args.overwrite:
-            os.rename(self.ofd.name, self.args.input)
+        if not self.args.dryrun:
+            self.ofd.close()
+            if self.args.overwrite:
+                os.rename(self.ofd.name, self.args.input)
 
     def codePointPairs(self, sec, bnpl, offset):
+        """Add the glyph names corresponding to the unicode codepoints specified in sec, if any"""
+
         if not sec.get('codepoints') and not sec.get('blocks'):
             return (bnpl, offset)
         if offset == -1:
@@ -705,10 +749,13 @@ class SFDFile:
         if sec.get('codepoints'):
             cp_ranges.add(sec['codepoints'])
         if sec.get('blocks'):
-            cp_ranges.add([ uniblock_dict[x.lower()] for x in re.split(', +', sec['blocks']) if uniblock_dict[x.lower()] ])
+            cp_ranges.add([ uniblock_dict[x.lower()] for x
+                            in re.split(', +', sec['blocks'])
+                            if uniblock_dict[x.lower()] ])
         if sec.get('classes'):
             ucd = unicat_dict(sec['classes'])
-            cp_ranges = IntRanges([ x for x in cp_ranges.ints() if ucd.get(unicodedata.category(chr(x)).lower()) ])
+            cp_ranges = IntRanges([ x for x in cp_ranges.ints()
+                                    if ucd.get(unicodedata.category(chr(x)).lower()) ])
         for uni_off in cp_ranges.offsetIntersect(self.uni_list):
             for uni_point in range(uni_off[1], uni_off[2]+1):
                 gn = self.uni_to_gnum.get(uni_point)
@@ -718,6 +765,8 @@ class SFDFile:
         return (bnpl, offset)
 
     def basenamePairs(self, sec, bnpl, offset):
+        """Add the glyph names corresponding to basenames, baseregex and nameregex in sec, if any"""
+
         if sec.get('baseregex'):
             if offset == -1:
                 offset = 0
@@ -742,39 +791,72 @@ class SFDFile:
         return (bnpl, offset)
 
     def pairsByExtension(self, el, all = False):
+        """Add the remaining unencoded glyphs with the extensions in el, if any"""
+
         if all:
             canon_ext = '.' + '.'.join(sorted(el))
-            return list(enumerate(( y[0] for y in ( self.gnum_tuple[x] for x in self.unenc_dict.keys() ) if y[4] == canon_ext )))
+            return list(enumerate(( y[0] for y
+                                    in ( self.gnum_tuple[x] for x in self.unenc_dict.keys() )
+                                    if y[4] == canon_ext )))
         else:
-            return list(enumerate(( y[0] for y in ( self.gnum_tuple[x] for x in self.unenc_dict.keys() ) if y[5].get(el[0]) )))
+            return list(enumerate(( y[0] for y
+                                    in ( self.gnum_tuple[x] for x in self.unenc_dict.keys() )
+                                    if all( (y[5].get(x) for x in el ) ))))
+
+    def narrowByExt(self, npl, hel):
+        noff = 0
+        loff = 0
+        rpl = []
+        for off, bn in npl:
+            noff += off - loff
+            loff = off
+            tl = list(enumerate(( self.getCanonName((y[3],y[4])) for y
+                                  in ( self.gnum_tuple[x] for x in self.unenc_dict.keys() )
+                                  if y[3] == bn and all(( y[5].get(x) for x in hel ) ))))
+            if len(tl) > 0:
+                rpl.extend( [ (y[0] + noff, y[1]) for y in tl ] )
+                noff += len(tl)-1
+        return rpl
 
     def getPairs(self, sec):
+        """Return pairs of (offset, canonical glyph name) corresponding to the directives in sec"""
+
         (npl, offset) = self.codePointPairs(sec, [], -1)
+        hasext = sec.get('has_extensions')
         (npl, offset) = self.basenamePairs(sec, npl, offset)
         ext = sec.get('extensions')
+        if ext and hasext:
+            sys.stderr.write("Section '" + sec.name + "' only specify one of 'extensions' and 'has_extensions'\n")
+            sys.exit(1)
         if offset == -1:
             if ext:
-                l = self.pairsByExtension(re.split('\.', ext)[1:])
+                l = self.pairsByExtension(re.split('\.', ext)[1:], True)
+            elif hasext:
+                l = self.pairsByExtension(re.split('\.', hasext)[1:], False)
             else:
                 sys.stderr.write("Section '" + sec.name + "' underspecified: no basenames or extensions\n")
                 sys.exit(1)
         elif offset > 0:
             if ext:
                 npl = ( (p[0], self.getCanonName(self.getCanonPair(p[1] + ext))) for p in npl )
-            l = [ x for x in npl if self.unenc_dict.get(self.canon_name_to_gnum.get(x[1], -2)) ]
+            if hasext:
+                l = self.narrowByExt(npl, re.split('\.', hasext)[1:])
+            else:
+                l = [ x for x in npl if self.unenc_dict.get(self.canon_name_to_gnum.get(x[1], -2)) ]
         else:
             l = npl
-
 
         return l
 
 class ConfigFile:
+    """Represents the contents of a configuration file"""
+
     def __init__(self, args, fnames):
         self.args = args
         try:
             self.config = configparser.ConfigParser()
             if args.config:
-                if not sys.path.exists(args.config):
+                if not os.path.exists(args.config):
                     raise Exception("Specified configuration file '" + configname + "' not found")
                 else:
                     path = args.config
@@ -786,15 +868,19 @@ class ConfigFile:
                 else:
                     sys.stderr.write("Did not find configuration file (checked '" + "', '".join(paths) + "')\n")
                     sys.exit(1)
-            sys.stderr.write(path + "\n")
             self.config.read(path)
-            self.top = self.config['top']
+            if 'top' in self.config:
+                self.top = self.config['top']
+            else:
+                self.top = {}
         except Exception as e:
             sys.stderr.write(str(e)) 
             sys.exit(1)
 
     @staticmethod
     def configNames(fnames):
+        """Returns a list of pathnames that will be checked for configuration contents"""
+
         dirs = [os.getcwd()]
         if args.input:
             ipath = os.path.dirname(args.input)
@@ -805,9 +891,11 @@ class ConfigFile:
         return [ os.path.join(x[0],x[1] + '.ini') for x in itertools.product(dirs, names) ]
 
     def sectionsOrder(self, prefix):
+        """Returns sections in the order specified by prefix"""
+
         has_o = False
         if self.top.get(prefix + '_order'):
-            snl = re.split('[ ,]+', top[prefix + '_order'])
+            snl = re.split('[ ,]+', self.top[prefix + '_order'])
             has_o = True
         else:
             snl = [ x for x in self.config.sections() if x != 'top' ]
@@ -830,12 +918,18 @@ class ConfigFile:
         return sl
    
     def sectionsPOrder(self):
+        """Returns sections in processing order"""
+
         return self.sectionsOrder('process')
 
     def sectionsOOrder(self):
+        """Returns sections in output order"""
+
         return self.sectionsOrder('output')
 
     def hierOpt(self, name, sec, default):
+        """Utility for options that can be specified at [top] or section level"""
+
         if isinstance(sec, str):
             sec = self.config.get(sec)
         if sec and sec.get(name):
@@ -845,10 +939,14 @@ class ConfigFile:
         return default
 
     def groupAlign(self, sec = None):
+        """Returns the group alignment for the specified section"""
+
         return int(self.hierOpt('group_align', sec, 8))
 
     def compact(self, sec = None):
-        return self.hierOpt('compact', sec, 'False') != 'False'
+        """Returns the boolean compact value for the specified section"""
+
+        return self.hierOpt('compact', sec, 'False').lower() == 'false'
 
 def nextOffset(cur_off, align):
     return int(math.ceil(cur_off / align)) * align
