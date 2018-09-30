@@ -181,7 +181,7 @@ Potential config file locations will be checked in this order:
 
 ## Glyph selection
 
-Other than an optional section called `top`, described [below](#top-section),
+Other than an optional section called `top`, described [below](#top-level-dirctives),
 the configuration file should contain a list of glyph selection sections, each
 of which specifies which unencoded glyphs are included in what order.
 
