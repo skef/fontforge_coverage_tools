@@ -12,6 +12,8 @@ import unicodedata
 import argparse
 import configparser
 
+# Author: Skef Iterum (github@skef.org)
+
 # Unicode structures
 
 # UNICODE, INC. LICENSE AGREEMENT - DATA FILES AND SOFTWARE

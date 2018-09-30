@@ -13,7 +13,7 @@ It requires Python 3 but has no other dependencies.
 	* [To check a file](#to-check-a-file)
 	* [Other options](#other-options)
 * [Configuration files](#configuration-files)
-	* [Glyph selection](#glyph-selection-sections)
+	* [Glyph selection](#glyph-selection)
 		* [By name](#by-name)
 		* [By Unicode codepoint](#by-unicode-codepoint)
 	* [Interactions between selection sections](#interactions-between-selection-sections)
@@ -60,7 +60,7 @@ what could be called a “pseudo-encoding”.
   specified with command-line arguments. 
 * It will only work with `.sfd` files with the `ISO 10646-1 (Unicode Full)`
   encoding, listed in the `Encoding:` header as `UnicodeFull`.
-* The files must be read and written by FontForge with the `Compact` option
+* The files must be read and written by FontForge with the `Encoding → Compact` option
   turned off. `Compact` can be used at any other time. 
 * If the file is being converted for the first time or was saved incorrectly
   you can just save it as as `Unicode Full`/not-`Compact` and then run the
@@ -78,7 +78,7 @@ If the `--input` (`-i`) option is specified the `.sfd` file will be read from
 that pathname rather than standard input. 
 
 The script will only run when a configuration file is provided, as described
-[below](configuration-files).
+[below](#configuration-files).
 
 ## To change a file
 
@@ -287,7 +287,7 @@ which matches `J.alt.2`, `K.alt`, `R.alt`, and `W.alt.1`.
 The `extensions` directive can be combined with any other besides
 `has_extensions`, while `has_extensions` can used on its own or with a regular
 expression but not with `basenames` or with Unicode-based selection (discussed
-[below](by-unicode-codepoint)).
+[below](#by-unicode-codepoint)).
 
 #### Ordering and “Holes”
 
