@@ -341,6 +341,10 @@ E0100..E01EF; Variation Selectors Supplement
 F0000..FFFFF; Supplementary Private Use Area-A
 100000..10FFFF; Supplementary Private Use Area-B"""
 
+# These are less for efficiency than for format centralization
+field_delim = re.compile('[, ]+')
+comma_delim = re.compile(', *')
+two_dots = re.compile('\.\.')
 bl_re = re.compile('^([0-9A-F]{4,6})\.\.([0-9A-F]{4,6}); (.+)$')
 
 uniblock_dict = collections.OrderedDict( (x[3].lower(), (int(x[1], 16), int(x[2], 16))) for x 
@@ -376,7 +380,10 @@ def unicat_dict(cs):
 
 def parseArgs():
     parser = argparse.ArgumentParser(
-            description='ff_sfd_pseudoenc: Organize unencoded glyphs in a FontForge SFD file'
+             description='ff_sfd_pseudoenc: Organize unencoded glyphs in a FontForge SFD file',
+             epilog='Documentation available at:\n'
+                 + '   https://github.com/skef/fontforge_coverage_tools/doc/ff_sfd_pseudoenc\n',
+             formatter_class=argparse.RawDescriptionHelpFormatter
             )
     parser.add_argument('-i', '--input', metavar='(input_file)')
     parser.add_argument('-o', '--output', metavar='(output_file)')
@@ -399,6 +406,7 @@ if args.verbosity and args.silent:
     sys.exit(2)
 
 # Globals
+
 if args.silent:
     verbosity = -1
 else:
@@ -426,12 +434,7 @@ if args.showblocks:
 spool_cutoff = 0x40000 # quarter megabyte
 first_custenc = 0x110000 # one past last Unicode codepoint
 
-# Less for efficiency than for format centralization
-field_delim = re.compile('[, ]+')
-comma_delim = re.compile(', *')
-two_dots = re.compile('\.\.')
-
-# Objects
+# Classes
 
 class IntRanges:
     """Represents a set of integers as an ordered list of tuples (low..high)"""
@@ -759,12 +762,12 @@ class SFDFile:
         else:
             lines = self.lines
         for lnum, line in enumerate(lines):
-            gn = self.ln_to_gnum.get(lnum)
+            gn = self.ln_to_gnum.get(lnum, -1)
         
             if lnum == self.header_encoding_ln:
                 if not self.args.check:
                     self.ofd.write("BeginChars: " + str(self.max_custenc) + " " + str(self.glyph_count) + "\n")
-            elif gn and self.gnum_tuple[gn][1] <= 1:
+            elif gn != -1 and self.gnum_tuple[gn][1] <= 1:
                 cust_enc = abs_cust_dict[gn]
                 if not self.args.check:
                     self.ofd.write("Encoding: " + str(cust_enc) + " -1 " + str(gn) + "\n")
@@ -791,14 +794,14 @@ class SFDFile:
             cp_ranges.add([ uniblock_dict[x.lower()] for x
                             in comma_delim.split(sec['blocks'])
                             if uniblock_dict[x.lower()] ])
-        if sec.get('classes'):
-            ucd = unicat_dict(sec['classes'])
+        if sec.get('categories'):
+            ucd = unicat_dict(sec['categories'])
             cp_ranges = IntRanges([ x for x in cp_ranges.ints()
                                     if ucd.get(unicodedata.category(chr(x)).lower()) ])
         for uni_off in cp_ranges.offsetIntersect(self.uni_list):
             for uni_point in range(uni_off[1], uni_off[2]+1):
-                gn = self.uni_to_gnum.get(uni_point)
-                if gn:
+                gn = self.uni_to_gnum.get(uni_point, -1)
+                if gn != -1:
                     bnpl.append((uni_off[0] + uni_point - uni_off[1], self.gnum_tuple[gn][0]))
         offset += cp_ranges.count()
         return (bnpl, offset)
@@ -828,16 +831,16 @@ class SFDFile:
 
         bre = re.compile(regstr)
 
-        return list(enumerate(( self.getCanonName((y[3], y[4])) for y 
-                                in ( self.gnum_tuple[x] for x in self.unenc_dict.keys() )
-                                if bre.match(y[tupidx]) and match_ext.matches(y) )))
+        return list(enumerate(sorted(( self.getCanonName((y[3], y[4])) for y 
+                                       in ( self.gnum_tuple[x] for x in self.unenc_dict.keys() )
+                                       if bre.match(y[tupidx]) and match_ext.matches(y) ))))
 
     def pairsByExtension(self, match_ext):
         """Add unencoded glyphs by extension match"""
 
-        return list(enumerate(( self.getCanonName((y[3],y[4])) for y
-                                in ( self.gnum_tuple[x] for x in self.unenc_dict.keys() )
-                                if match_ext.matches(y) )))
+        return list(enumerate(sorted(( self.getCanonName((y[3],y[4])) for y
+                                       in ( self.gnum_tuple[x] for x in self.unenc_dict.keys() )
+                                       if match_ext.matches(y) ))))
 
     def narrowByExtension(self, bntl, match_ext):
         """
@@ -954,11 +957,12 @@ class ConfigFile:
     def sectionsOOrder(self):
         """Returns sections in output order"""
 
-        return self.sectionsOrder('output')
+        return self.sectionsOrder('display')
 
     def hierOpt(self, name, sec, default):
         """Utility for options that can be specified at [top] or section level"""
 
+        # sec can be passed as either object or name
         if isinstance(sec, str):
             sec = self.config.get(sec)
         if sec and sec.get(name):
@@ -975,7 +979,7 @@ class ConfigFile:
     def compact(self, sec = None):
         """Returns the boolean compact value for the specified section"""
 
-        return self.hierOpt('compact', sec, 'False').lower() == 'false'
+        return self.hierOpt('compact', sec, 'False').lower() == 'true'
 
 def nextOffset(cur_off, align):
     return int(math.ceil(cur_off / align)) * align
