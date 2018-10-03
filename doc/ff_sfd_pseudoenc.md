@@ -108,10 +108,9 @@ rename, to minimize (but not eliminate) the chance of corruption.
 ## To check a file
 
 When the `--check` flag is added the script will not produce output and only
-report any errors and whether the current glyph order is the same as the order
+report any warnings and whether the current glyph order is the same as the order
 specified in the configuration file. When the order would not change it will
-return exit code 0 and when it would and there are no other issues it will
-return exit code 3. 
+return exit code 0 and when it will print a message and return exit code 3.
 
 ## Other options
 
