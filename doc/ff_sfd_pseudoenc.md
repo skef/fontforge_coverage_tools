@@ -58,13 +58,11 @@ what could be called a “pseudo-encoding”.
   modified through that interface). 
 * You must supply a configuration file -- glyph groups cannot be directly
   specified with command-line arguments. 
-* It will only work with `.sfd` files with the `ISO 10646-1 (Unicode Full)`
-  encoding, listed in the `Encoding:` header as `UnicodeFull`.
-* The files must be read and written by FontForge with the `Encoding → Compact` option
-  turned off. `Compact` can be used at any other time. 
+* It will only work with `.sfd` files with the `ISO 10646-1 (Unicode, Full)`
+  or `ISO 10646-1 (Unicode, BMP)` encodings, listed in the `Encoding:` header
+  as `UnicodeFull` or `UnicodeBmp` respectively.
 * If the file is being converted for the first time or was saved incorrectly
-  you can just save it as as `Unicode Full`/not-`Compact` and then run the
-  script.
+  you can just save it as as `Unicode Full/BMP` and run the script again.
 
 # Running the script
 
@@ -134,9 +132,9 @@ To run the script you must supply a configuration file with 'ini' syntax. As
 described above you can specify the name of the file with the `--config``
 (`-c`) option. Or you can give it any of these names:
 
-* The Font Name, as specified in the `FontName` header, followed by `.ini`.
+* The Font Name, as specified in the `FontName` header, followed by ` pse.ini`.
 * The Font Name with spaces replaced by hyphens, by underscores, or omitted,
-  followed by `.ini`
+  followed by `-pse.ini`, `\_pse.ini` or `pse.ini` respectively.
 * The same as above but with the Full Name, as specified in the `FullName`
   header.
 * The same but with the Family name, as specified in the `FamilyName` header.
@@ -505,18 +503,19 @@ Each glyph in a FontForge `.sfd` file is assigned three numbers on its
 > [The Encoding line] gives the encoding, first in the current font,
 > then in unicode, and finally the original position (GID).
 
-Using the `ISO 10646-1 (Unicode Full)` encoding, the second number will
-be the Unicode codepoint for the glyph if it has one or -1 if it doesn't.
-Without intervention the first number is equal to the second when the latter is
-greater than -1, and therefore just repeats the Unicode assignment.
+Using the `ISO 10646-1 (Unicode, Full)` or `ISO 10646-1 (Unicode, BMP)`
+encodings, the second number will be the Unicode codepoint for the glyph if it
+has one or -1 if it doesn't. Without intervention the first number is equal to
+the second when the latter is greater than -1, and therefore just repeats the
+Unicode assignment.
 
-When the second number equals -1 the first is some number greater than
-0x10FFFF—the highest codepoint value so far—loosely determined by the order in
-which the glyph was added. It is actually *this number* that determines the
-“slot” in which an unencoded glyph is displayed. All `ff_sfd_pseudoenc`
-modifies is this number, and only when the second is -1. (Well, almost—the
-`BeginChars` header has a value that corresponds to the maximum of these first
-encoding numbers, and that is also set as needed.
+When the second number equals -1 the first is some number greater than 0x10FFFF
+(for `Full`) or 0x10000 (for `BMP`), loosely determined by the order in which
+the glyph was added. It is actually *this number* that determines the “slot” in
+which an unencoded glyph is displayed. All `ff_sfd_pseudoenc` modifies is this
+number, and only when the second is -1. (Well, almost—the `BeginChars` header
+has a value that corresponds to the maximum of these first encoding numbers,
+and that is also set as needed.
 
 This solution is *stable* because FontForge will not “reencode” a font
 unless you tell it to, so as long as you save with the right encoding 
@@ -526,7 +525,7 @@ re-save it correctly and then run the script on it again.)
 The solution is *safe* because the default encoding values were arbitrary
 anyway—they have no real semantic value other than influencing the display. (Or
 to look at the question another way, if they were not essentially arbitrary for
-a “UnicodeFull” encoding there would be some interface for changing them.)
+a `UnicodeFull` or `UnicodeBmp` encoding there would be some interface for changing them.)
 
 [1]: https://fontforge.github.io
 [2]: https://www.unicode.org/versions/Unicode11.0.0/ch04.pdf#G134153

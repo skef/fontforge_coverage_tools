@@ -434,7 +434,7 @@ if args.showblocks:
     sys.exit(0)
 
 spool_cutoff = 0x40000 # quarter megabyte
-first_custenc = 0x110000 # one past last Unicode codepoint
+first_custenc = { 'UnicodeFull': 0x110000, 'UnicodeBmp': 0x10000 }
 
 # Classes
 
@@ -602,8 +602,8 @@ class ExtensionMatcher:
                 do_log("Checking if all of " + str(self.hasextlist) + " are in " + str(gtup[5]) + "\n", 4)
             return all( ( gtup[5].get(z) for z in self.hasextlist ) )
         elif self.ext:
-            do_log("Checking if '" + ext_str + "' equals '" + tup[4] + "'\n", 4)
-            return tup[4] == ext_str
+            do_log("Checking if '" + self.extstr + "' equals '" + '.' + gtup[4] + "'\n", 4)
+            return '.' + gtup[4] == self.extstr
         else:
             return True
 
@@ -624,6 +624,7 @@ class SFDFile:
         self.args = args
 
         self.header_encoding_ln = -1
+        self.base_encoding = None
         self.glyph_count = 0;
         self.max_custenc = 0
         self.lines = []
@@ -738,10 +739,11 @@ class SFDFile:
                 if not found_chars:
                     m = he_re.match(line)
                     if (m):
-                        if not (m.group(1) == 'UnicodeFull'):
-                            do_log("Base encoding is " + m.group(1) + ", must be UnicodeFull\n", 0, 1);
+                        self.base_encoding = m.group(1)
+                        if not first_custenc.get(self.base_encoding):
+                            do_log("Base encoding '" + self.base_encoding + "' not supported, must be Unicode BMP or Unicode Full\n", 0, 1);
                         else:
-                            do_log("Base encoding is UnicodeFull as required\n", 2);
+                            do_log("Base encoding '" + self.base_encoding + "' is supported.\n", 2);
                         continue
                     m = fn_re.match(line)
                     if (m):
@@ -982,9 +984,9 @@ class ConfigFile:
             ipath = os.path.dirname(args.input)
             if os.path.exists(ipath) and not os.path.samefile(dirs[0], ipath):
                 dirs.insert(0, ipath)
-        names = [ x[0].replace(' ', x[1]) for x in itertools.product(fnames,(' ', '_', '-', '')) ]
-        names.append('ff_sfd_pseudoenc')
-        return [ os.path.join(x[0],x[1] + '.ini') for x in itertools.product(dirs, names) ]
+        names = [ (x[0] + ' pse.ini').replace(' ', x[1]) for x in itertools.product(fnames,(' ', '_', '-', '')) ]
+        names.append('ff_sfd_pseudoenc.ini')
+        return [ os.path.join(x[0],x[1]) for x in itertools.product(dirs, names) ]
 
     def sectionsOrder(self, prefix):
         """Returns sections in the order specified by prefix"""
@@ -1083,7 +1085,7 @@ def main():
             compact_offset += 1
         rel_cust_dict[sec.name] = offset_dict
     
-    cur_offset = first_custenc
+    cur_offset = first_custenc[sfd.base_encoding]
     abs_cust_dict = {}
     
     # Assign absolute encoding numbers in display order
