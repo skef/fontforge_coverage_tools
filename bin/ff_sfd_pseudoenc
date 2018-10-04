@@ -418,7 +418,7 @@ def parseArgs():
     parser = argparse.ArgumentParser(
              description='ff_sfd_pseudoenc: Organize unencoded glyphs in a FontForge SFD file',
              epilog='Documentation available at:\n'
-                 + '   https://github.com/skef/fontforge_coverage_tools/doc/ff_sfd_pseudoenc\n',
+                 + '   https://github.com/skef/fontforge_coverage_tools\n',
              formatter_class=argparse.RawDescriptionHelpFormatter
             )
     parser.add_argument('-i', '--input', metavar='(input_file)')
@@ -1128,7 +1128,7 @@ def main():
         ga = config.groupAlign(sec)
         do_log("Displaying section '" + sec.name + "', group_align is " + str(ga) + "\n", 2)
         if len(offset_dict) == 0:
-            do_log("Warning: no (unencoded) glyphs found for section '" + sec.name + "'\n", 0)
+            do_log("Notice: no (unencoded) glyphs found for section '" + sec.name + "'\n", 0)
             continue
         udict = {k: v+cur_offset for (k,v) in offset_dict.items()}
         if verbosity >= 3:
