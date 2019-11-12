@@ -933,7 +933,7 @@ class SFDFile:
             do_log("Extension-based offset pair list: " + str(l) + "\n", 3)
         return l
 
-    def narrowByExtension(self, bntl, match_ext):
+    def narrowByExtension(self, sec, bntl, match_ext):
         """
         Narrow a list of basenames or names pulled from Unicode 
         codepoints to those that match the specified extensions
@@ -976,7 +976,7 @@ class SFDFile:
             else:
                 do_log("Section '" + sec.name + "': insufficient selection directives\n", 0, 1)
         else:
-            return self.narrowByExtension(bnpl, match_ext)
+            return self.narrowByExtension(sec, bnpl, match_ext)
 
 class ConfigFile:
     """Represents the contents of a configuration file"""
